@@ -130,6 +130,8 @@ set(SOURCES
     src/core/ScreensaverMode.cpp
     src/renderer/Renderer.cpp
     src/renderer/Framebuffer.cpp
+    src/renderer/BufferManager.cpp
+    src/renderer/MultiPassRenderer.cpp
     src/renderer/Texture.cpp
     src/renderer/TextureManager.cpp
     src/renderer/NoiseGenerator.cpp
@@ -181,10 +183,12 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 # Windows 特定配置
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE opengl32)
-    # 隐藏控制台窗口 (Release 模式)
-    if(CMAKE_BUILD_TYPE STREQUAL "Release")
-        set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE TRUE)
-    endif()
+    # 隐藏控制台窗口 (Release 模式) - 临时禁用用于调试
+    # if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    #     set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE TRUE)
+    #     # 使用 main 入口点而不是 WinMain
+    #     target_link_options(${PROJECT_NAME} PRIVATE "/ENTRY:mainCRTStartup")
+    # endif()
 endif()
 
 # Linux 特定配置

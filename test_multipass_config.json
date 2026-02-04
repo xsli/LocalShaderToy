@@ -1,0 +1,39 @@
+{
+  "profiles": [
+    {
+      "name": "MultiPass Debug Test",
+      "timeScale": 1.0,
+      "passes": [
+        {
+          "type": "bufferA",
+          "code": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    fragColor = vec4(1.0, 0.0, 0.0, 1.0);\n}",
+          "channels": [-1, -1, -1, -1],
+          "enabled": true
+        },
+        {
+          "type": "bufferB",
+          "code": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    fragColor = vec4(0.0, 1.0, 0.0, 1.0);\n}",
+          "channels": [-1, -1, -1, -1],
+          "enabled": true
+        },
+        {
+          "type": "bufferC",
+          "code": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    fragColor = vec4(0.0, 0.0, 1.0, 1.0);\n}",
+          "channels": [-1, -1, -1, -1],
+          "enabled": true
+        },
+        {
+          "type": "image",
+          "code": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 uv = fragCoord / iResolution.xy;\n    \n    if (uv.y > 0.666) {\n        fragColor = texture(iChannel0, uv);\n    } else if (uv.y > 0.333) {\n        fragColor = texture(iChannel1, uv);\n    } else {\n        fragColor = texture(iChannel2, uv);\n    }\n}",
+          "channels": [100, 101, 102, -1],
+          "enabled": true
+        }
+      ],
+      "shaderCode": "",
+      "channelBindings": [-1, -1, -1, -1]
+    }
+  ],
+  "activeProfileIndex": 0,
+  "randomMode": false,
+  "randomInterval": 30.0
+}

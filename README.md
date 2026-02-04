@@ -13,6 +13,8 @@ A **native OpenGL implementation** of [Shadertoy](https://www.shadertoy.com/) th
 - 📝 **Integrated code editor** with GLSL syntax highlighting
 - 🎛️ **Built-in textures**: Noise, Perlin, Blue Noise, Checkerboard, etc.
 - 🖼️ **Windows Screensaver**: Use your shaders as system screensavers!
+- 🔀 **Multi-pass rendering**: Full support for Buffer A/B/C/D and Common code
+- 🎲 **Random shuffle**: Automatically cycle through your shader collection
 
 ## 🚀 Quick Start
 
@@ -82,6 +84,43 @@ cmake --build . --config Release
 - **File → Screensaver → Manage Profiles...** - Rename, delete, or load profiles
 - **File → Screensaver → [Profile List]** - Click any profile to set it as active
 
+### Random Shuffle Mode 🎲
+
+Enable automatic cycling through multiple shader profiles:
+
+1. Open **File → Screensaver → Manage Profiles...**
+2. **Check the box** next to profiles you want to include in random rotation
+3. Enable **"Random shuffle"** checkbox
+4. Set the **interval** (seconds between shader switches)
+5. Click **Save Settings**
+
+When screensaver activates, it will randomly cycle through checked profiles.
+
+## 🔀 Multi-pass Rendering
+
+Local Shadertoy supports full multi-pass rendering just like Shadertoy.com:
+
+### Available Passes
+
+| Pass | Description |
+|------|-------------|
+| **Common** | Shared code included in all other passes |
+| **Buffer A-D** | Intermediate render targets (can read from each other) |
+| **Image** | Final output pass |
+
+### Using Buffers
+
+1. Click the **Buffer A/B/C/D** tabs in the editor
+2. Write your buffer shader code
+3. Set **iChannel bindings** to read from other buffers
+4. The **Image** pass reads from buffers and outputs to screen
+
+### Buffer Self-Reference
+
+Buffers can read their own previous frame for feedback effects:
+- In Buffer A, set `iChannel0 = Buffer A` to read last frame's content
+- Uses ping-pong double buffering internally
+
 ### Configuration File Location
 
 Screensaver profiles are stored at:
@@ -125,9 +164,11 @@ All dependencies are automatically downloaded via CMake FetchContent:
 
 ## 🗺️ Roadmap
 
-- [ ] Multi-pass rendering (Buffer A/B/C/D)
+- [x] Multi-pass rendering (Buffer A/B/C/D) ✅
+- [x] Random shuffle screensaver mode ✅
 - [ ] Audio FFT input
 - [ ] Video/GIF export
+- [ ] Cubemap support
 - [ ] Linux/macOS support
 
 ## 📄 License

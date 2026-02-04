@@ -105,6 +105,29 @@ std::string ScreensaverMode::getConfigPath() {
     return "config.json";
 }
 
+// 辅助：PassType 转字符串
+static std::string passTypeToString(ShaderPassType type) {
+    switch (type) {
+        case ShaderPassType::Image: return "image";
+        case ShaderPassType::Common: return "common";
+        case ShaderPassType::BufferA: return "bufferA";
+        case ShaderPassType::BufferB: return "bufferB";
+        case ShaderPassType::BufferC: return "bufferC";
+        case ShaderPassType::BufferD: return "bufferD";
+        default: return "image";
+    }
+}
+
+// 辅助：字符串转 PassType
+static ShaderPassType stringToPassType(const std::string& str) {
+    if (str == "common") return ShaderPassType::Common;
+    if (str == "bufferA") return ShaderPassType::BufferA;
+    if (str == "bufferB") return ShaderPassType::BufferB;
+    if (str == "bufferC") return ShaderPassType::BufferC;
+    if (str == "bufferD") return ShaderPassType::BufferD;
+    return ShaderPassType::Image;
+}
+
 bool ScreensaverMode::loadConfig(ScreensaverConfig& config) {
     try {
         std::ifstream file(getConfigPath());
@@ -121,13 +144,47 @@ bool ScreensaverMode::loadConfig(ScreensaverConfig& config) {
             for (const auto& pj : j["profiles"]) {
                 ScreensaverProfile profile;
                 if (pj.contains("name")) profile.name = pj["name"].get<std::string>();
-                if (pj.contains("shaderCode")) profile.shaderCode = pj["shaderCode"].get<std::string>();
                 if (pj.contains("timeScale")) profile.timeScale = pj["timeScale"].get<float>();
-                if (pj.contains("channelBindings")) {
-                    for (int i = 0; i < 4 && i < static_cast<int>(pj["channelBindings"].size()); i++) {
-                        profile.channelBindings[i] = pj["channelBindings"][i].get<int>();
+                if (pj.contains("includeInRandom")) profile.includeInRandom = pj["includeInRandom"].get<bool>();
+                
+                // 新格式：Multi-pass
+                if (pj.contains("passes") && pj["passes"].is_array()) {
+                    profile.passes.clear();
+                    for (const auto& passJson : pj["passes"]) {
+                        PassConfig pass;
+                        if (passJson.contains("type")) {
+                            pass.type = stringToPassType(passJson["type"].get<std::string>());
+                        }
+                        if (passJson.contains("code")) {
+                            pass.code = passJson["code"].get<std::string>();
+                        }
+                        if (passJson.contains("enabled")) {
+                            pass.enabled = passJson["enabled"].get<bool>();
+                        }
+                        if (passJson.contains("channels") && passJson["channels"].is_array()) {
+                            for (int i = 0; i < 4 && i < static_cast<int>(passJson["channels"].size()); i++) {
+                                pass.channels[i] = passJson["channels"][i].get<int>();
+                            }
+                        }
+                        profile.passes.push_back(pass);
+                    }
+                    // 确保有 Image pass
+                    if (profile.passes.empty()) {
+                        profile.passes.push_back(PassConfig(ShaderPassType::Image));
                     }
                 }
+                // 旧格式兼容：shaderCode + channelBindings
+                else if (pj.contains("shaderCode")) {
+                    profile.shaderCode = pj["shaderCode"].get<std::string>();
+                    if (pj.contains("channelBindings")) {
+                        for (int i = 0; i < 4 && i < static_cast<int>(pj["channelBindings"].size()); i++) {
+                            profile.channelBindings[i] = pj["channelBindings"][i].get<int>();
+                        }
+                    }
+                    // 迁移到新格式
+                    profile.migrateFromLegacy();
+                }
+                
                 config.profiles.push_back(profile);
             }
             if (j.contains("activeProfileIndex")) {
@@ -179,6 +236,8 @@ bool ScreensaverMode::loadConfig(ScreensaverConfig& config) {
             for (int i = 0; i < 4; i++) {
                 profile.channelBindings[i] = config.channelBindings[i];
             }
+            // 迁移到新格式
+            profile.migrateFromLegacy();
             config.profiles.push_back(profile);
             config.activeProfileIndex = 0;
         }
@@ -193,19 +252,42 @@ bool ScreensaverMode::saveConfig(const ScreensaverConfig& config) {
     try {
         nlohmann::json j;
         
-        // 保存 profiles 数组
+        // 保存 profiles 数组（Multi-pass 格式）
         j["profiles"] = nlohmann::json::array();
-        for (const auto& profile : config.profiles) {
+        for (auto profile : config.profiles) {  // 拷贝以便调用 syncToLegacy
+            // 同步到旧字段以保持向后兼容
+            profile.syncToLegacy();
+            
             nlohmann::json pj;
             pj["name"] = profile.name;
-            pj["shaderCode"] = profile.shaderCode;
             pj["timeScale"] = profile.timeScale;
+            pj["includeInRandom"] = profile.includeInRandom;
+            
+            // 新格式：保存 passes 数组
+            pj["passes"] = nlohmann::json::array();
+            for (const auto& pass : profile.passes) {
+                nlohmann::json passJson;
+                passJson["type"] = passTypeToString(pass.type);
+                passJson["code"] = pass.code;
+                passJson["enabled"] = pass.enabled;
+                passJson["channels"] = {
+                    pass.channels[0],
+                    pass.channels[1],
+                    pass.channels[2],
+                    pass.channels[3]
+                };
+                pj["passes"].push_back(passJson);
+            }
+            
+            // 同时保存旧格式字段（向后兼容）
+            pj["shaderCode"] = profile.shaderCode;
             pj["channelBindings"] = {
                 profile.channelBindings[0],
                 profile.channelBindings[1],
                 profile.channelBindings[2],
                 profile.channelBindings[3]
             };
+            
             j["profiles"].push_back(pj);
         }
         j["activeProfileIndex"] = config.activeProfileIndex;
@@ -213,6 +295,9 @@ bool ScreensaverMode::saveConfig(const ScreensaverConfig& config) {
         // 保存随机播放设置
         j["randomMode"] = config.randomMode;
         j["randomInterval"] = config.randomInterval;
+        
+        // 配置版本标记
+        j["version"] = 2;  // Multi-pass 格式版本
         
         std::ofstream file(getConfigPath());
         if (!file.is_open()) {
