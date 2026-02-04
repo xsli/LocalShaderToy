@@ -127,6 +127,7 @@ set(SOURCES
     src/core/UniformManager.cpp
     src/core/ShaderProject.cpp
     src/core/ProjectManager.cpp
+    src/core/ScreensaverMode.cpp
     src/renderer/Renderer.cpp
     src/renderer/Framebuffer.cpp
     src/renderer/Texture.cpp
@@ -212,6 +213,21 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     ${CMAKE_SOURCE_DIR}/shaders
     $<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders
 )
+
+# ============================================================================
+# Windows 屏幕保护程序 (.scr) 构建
+# ============================================================================
+if(WIN32)
+    # 创建 .scr 文件（复制 .exe 并重命名为 .scr）
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+        $<TARGET_FILE:${PROJECT_NAME}>
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>/${PROJECT_NAME}.scr
+        COMMENT "Creating screensaver file: ${PROJECT_NAME}.scr"
+    )
+    
+    message(STATUS "Screensaver: ${PROJECT_NAME}.scr will be created in bin folder")
+endif()
 
 # ============================================================================
 # 安装配置

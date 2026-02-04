@@ -20,29 +20,66 @@ Application::~Application() {
 }
 
 bool Application::init() {
-    // 初始化 GLFW
-    if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
-        return false;
-    }
+    // 注意：GLFW 已在 main() 中初始化，这里不需要再调用 glfwInit()
 
     // 配置 OpenGL 版本
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, m_config.glMajorVersion);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, m_config.glMinorVersion);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     
+    // 窗口装饰（边框）
+    glfwWindowHint(GLFW_DECORATED, m_config.decorated ? GLFW_TRUE : GLFW_FALSE);
+    
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
+    // 确保双缓冲
+    glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+    
     // 创建窗口
-    GLFWmonitor* monitor = m_config.fullscreen ? glfwGetPrimaryMonitor() : nullptr;
-    m_window = glfwCreateWindow(m_width, m_height, m_config.title.c_str(), monitor, nullptr);
+    GLFWmonitor* monitor = nullptr;
+    GLFWmonitor* targetMonitor = nullptr;
+    int monitorX = 0, monitorY = 0;
+    
+    if (m_config.fullscreen) {
+        targetMonitor = glfwGetPrimaryMonitor();
+        const GLFWvidmode* mode = glfwGetVideoMode(targetMonitor);
+        
+        // 获取显示器位置
+        glfwGetMonitorPos(targetMonitor, &monitorX, &monitorY);
+        
+        // 如果是无边框全屏，使用窗口模式但覆盖整个屏幕
+        if (!m_config.decorated) {
+            // 无边框窗口模式全屏 (Borderless Fullscreen)
+            glfwWindowHint(GLFW_RED_BITS, mode->redBits);
+            glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
+            glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
+            glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
+            glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);  // 防止自动最小化
+            glfwWindowHint(GLFW_FLOATING, GLFW_TRUE);       // 窗口置顶
+            m_width = mode->width;
+            m_height = mode->height;
+            // 使用 nullptr 作为 monitor，创建普通窗口然后全屏覆盖
+            monitor = nullptr;
+        } else {
+            // 真正的独占全屏模式
+            monitor = targetMonitor;
+        }
+    }
+    
+    m_window = glfwCreateWindow(m_width, m_height, m_config.title.c_str(), 
+                                  monitor, nullptr);
     
     if (!m_window) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return false;
+    }
+    
+    // 对于无边框全屏，设置窗口位置覆盖整个显示器
+    if (m_config.fullscreen && !m_config.decorated && targetMonitor != nullptr) {
+        glfwSetWindowPos(m_window, monitorX, monitorY);
     }
 
     glfwMakeContextCurrent(m_window);
@@ -117,7 +154,7 @@ void Application::shutdown() {
         glfwDestroyWindow(m_window);
         m_window = nullptr;
     }
-    glfwTerminate();
+    // 注意：glfwTerminate() 在 main() 中调用，这里只销毁窗口
 }
 
 float Application::getTime() const {

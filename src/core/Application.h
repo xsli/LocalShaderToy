@@ -13,6 +13,7 @@ struct AppConfig {
     std::string title = "Local Shadertoy";
     bool vsync = true;
     bool fullscreen = false;
+    bool decorated = true;  // 是否显示窗口边框
     int glMajorVersion = 4;
     int glMinorVersion = 3;
 };
