@@ -43,6 +43,9 @@ public:
     }
     void setFrame(int frame) { m_uniforms.iFrame = frame; }
     
+    // 更新日期时间 (自动获取当前时间)
+    void updateDate();
+    
     // 设置通道分辨率
     void setChannelResolution(int channel, const glm::vec3& resolution);
     

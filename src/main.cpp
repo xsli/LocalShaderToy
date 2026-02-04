@@ -1451,6 +1451,7 @@ int runScreensaverMode() {
             state.uniformManager.setMouse(0, 0, 0, 0);
             state.uniformManager.setFrame(app.getFrame());
             state.uniformManager.setTimeDelta(app.getDeltaTime());
+            state.uniformManager.updateDate();  // 更新日期时间
             
             // 执行多 Pass 渲染
             state.multiPassRenderer.render(state.uniformManager, state.renderer);
@@ -1628,6 +1629,7 @@ int runEditorMode() {
                         mouse.leftPressed ? mouse.clickY : 0.0f);
                     state.uniformManager.setFrame(app.getFrame());
                     state.uniformManager.setTimeDelta(app.getDeltaTime());
+                    state.uniformManager.updateDate();  // 更新日期时间
                     state.uniformManager.applyUniforms(program);
                 },
                 // 纹理绑定回调 (用于非 Buffer 类型的纹理)
@@ -1706,6 +1708,7 @@ int runEditorMode() {
                 mouse.leftPressed ? mouse.clickY : 0.0f);
             state.uniformManager.setFrame(app.getFrame());
             state.uniformManager.setTimeDelta(app.getDeltaTime());
+            state.uniformManager.updateDate();  // 更新日期时间
             state.uniformManager.applyUniforms(program);
             
             state.renderer.renderFullscreenQuad();

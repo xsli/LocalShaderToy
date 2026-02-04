@@ -25,13 +25,15 @@ void UniformManager::updateFromApp(const Application& app) {
     );
     
     // 获取当前日期时间
+    // iDate = vec4(year, month, day, seconds_since_midnight)
+    // 注意：tm_mon 是 0-11，需要 +1 变成 1-12
     std::time_t now = std::time(nullptr);
     std::tm* tm = std::localtime(&now);
     m_uniforms.iDate = glm::vec4(
-        static_cast<float>(tm->tm_year + 1900),
-        static_cast<float>(tm->tm_mon),
-        static_cast<float>(tm->tm_mday),
-        static_cast<float>(tm->tm_hour * 3600 + tm->tm_min * 60 + tm->tm_sec)
+        static_cast<float>(tm->tm_year + 1900),  // 年份（如 2026）
+        static_cast<float>(tm->tm_mon + 1),      // 月份（1-12）
+        static_cast<float>(tm->tm_mday),         // 日期（1-31）
+        static_cast<float>(tm->tm_hour * 3600 + tm->tm_min * 60 + tm->tm_sec)  // 秒数
     );
     
     m_uniforms.iSampleRate = 44100.0f;
@@ -88,6 +90,20 @@ void UniformManager::setChannelTime(int channel, float time) {
     if (channel >= 0 && channel < 4) {
         m_uniforms.iChannelTime[channel] = time;
     }
+}
+
+void UniformManager::updateDate() {
+    // 获取当前日期时间
+    // iDate = vec4(year, month, day, seconds_since_midnight)
+    // 注意：tm_mon 是 0-11，需要 +1 变成 1-12
+    std::time_t now = std::time(nullptr);
+    std::tm* tm = std::localtime(&now);
+    m_uniforms.iDate = glm::vec4(
+        static_cast<float>(tm->tm_year + 1900),  // 年份（如 2026）
+        static_cast<float>(tm->tm_mon + 1),      // 月份（1-12）
+        static_cast<float>(tm->tm_mday),         // 日期（1-31）
+        static_cast<float>(tm->tm_hour * 3600 + tm->tm_min * 60 + tm->tm_sec)  // 秒数
+    );
 }
 
 } // namespace shadertoy
