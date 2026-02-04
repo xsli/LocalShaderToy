@@ -162,7 +162,11 @@ All dependencies are automatically downloaded via CMake FetchContent:
 - [ImGuiColorTextEdit](https://github.com/BalazsJako/ImGuiColorTextEdit) - Code editor
 - [nlohmann/json](https://github.com/nlohmann/json) - JSON serialization
 
-## 🗺️ Roadmap
+## � Documentation
+
+- **[Project Overview & Architecture](docs/PROJECT_OVERVIEW.md)** - Complete project summary with flow diagrams, class relationships, and data structures
+
+## �🗺️ Roadmap
 
 - [x] Multi-pass rendering (Buffer A/B/C/D) ✅
 - [x] Random shuffle screensaver mode ✅
