@@ -133,6 +133,13 @@ bool ScreensaverMode::loadConfig(ScreensaverConfig& config) {
             if (j.contains("activeProfileIndex")) {
                 config.activeProfileIndex = j["activeProfileIndex"].get<int>();
             }
+            // 读取随机播放设置
+            if (j.contains("randomMode")) {
+                config.randomMode = j["randomMode"].get<bool>();
+            }
+            if (j.contains("randomInterval")) {
+                config.randomInterval = j["randomInterval"].get<float>();
+            }
         }
         // 兼容旧版本配置：迁移为单个 profile
         else if (j.contains("shaderCode") || j.contains("useBuiltinShader")) {
@@ -202,6 +209,10 @@ bool ScreensaverMode::saveConfig(const ScreensaverConfig& config) {
             j["profiles"].push_back(pj);
         }
         j["activeProfileIndex"] = config.activeProfileIndex;
+        
+        // 保存随机播放设置
+        j["randomMode"] = config.randomMode;
+        j["randomInterval"] = config.randomInterval;
         
         std::ofstream file(getConfigPath());
         if (!file.is_open()) {

@@ -32,6 +32,10 @@ struct ScreensaverConfig {
     std::vector<ScreensaverProfile> profiles;   // 配置档案列表
     int activeProfileIndex = 0;                  // 当前激活的配置索引
     
+    // 随机播放设置
+    bool randomMode = false;                     // 是否启用随机播放模式
+    float randomInterval = 30.0f;                // 随机切换间隔（秒）
+    
     // 兼容旧配置的字段（已废弃，仅用于迁移）
     std::string shaderPath;         // shader 文件路径
     std::string shaderCode;         // 缓存的 shader 代码

@@ -31,6 +31,8 @@
 #include <cmath>
 #include <fstream>
 #include <sstream>
+#include <cstdlib>
+#include <ctime>
 
 using namespace shadertoy;
 
@@ -44,6 +46,10 @@ static double g_initialMouseX = 0.0;
 static double g_initialMouseY = 0.0;
 static bool g_mouseInitialized = false;
 static const double MOUSE_MOVE_THRESHOLD = 10.0;
+
+// 随机播放状态
+static float g_randomTimer = 0.0f;
+static int g_currentRandomIndex = -1;
 
 // 全局状态
 struct AppState {
@@ -205,6 +211,14 @@ void renderUI(AppState& state, Application& app) {
                         if (ImGui::MenuItem(label.c_str(), nullptr, isActive)) {
                             g_scrConfig.activeProfileIndex = i;
                             ScreensaverMode::saveConfig(g_scrConfig);
+                            
+                            // 实时加载选中的 profile 到编辑器
+                            const auto& profile = g_scrConfig.profiles[static_cast<size_t>(i)];
+                            state.editor.SetText(profile.shaderCode);
+                            for (int ch = 0; ch < 4; ch++) {
+                                state.channelBindings[ch] = profile.channelBindings[ch];
+                            }
+                            state.needsRecompile = true;
                         }
                     }
                 } else {
@@ -571,6 +585,25 @@ void renderUI(AppState& state, Application& app) {
             }
         }
         
+        // 随机播放设置
+        ImGui::Separator();
+        ImGui::Text("Random Playback:");
+        bool randomMode = g_scrConfig.randomMode;
+        if (ImGui::Checkbox("Enable Random Mode", &randomMode)) {
+            g_scrConfig.randomMode = randomMode;
+            ScreensaverMode::saveConfig(g_scrConfig);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Randomly switch between profiles during screensaver");
+        }
+        
+        float intervalSec = g_scrConfig.randomInterval;
+        ImGui::SetNextItemWidth(150);
+        if (ImGui::SliderFloat("Switch Interval (sec)", &intervalSec, 10.0f, 300.0f, "%.0f")) {
+            g_scrConfig.randomInterval = intervalSec;
+            ScreensaverMode::saveConfig(g_scrConfig);
+        }
+        
         ImGui::Separator();
         if (ImGui::Button("Close", ImVec2(120, 0))) {
             selectedProfile = -1;
@@ -692,6 +725,69 @@ int runScreensaverMode() {
     // 编译 shader
     compileCurrentShader(state, shaderCode);
     
+    // 随机播放状态初始化
+    g_randomTimer = 0.0f;
+    g_currentRandomIndex = g_scrConfig.activeProfileIndex;
+    
+    // 如果启用随机模式且只有一个 profile，禁用随机模式
+    bool effectiveRandomMode = g_scrConfig.randomMode && g_scrConfig.profiles.size() > 1;
+    float randomInterval = g_scrConfig.randomInterval;
+    if (randomInterval <= 0.0f) randomInterval = 30.0f;
+    
+    // 初始化随机数种子
+    srand(static_cast<unsigned int>(time(nullptr)));
+    
+    // 随机选择初始 profile（如果启用随机模式）
+    if (effectiveRandomMode && !g_scrConfig.profiles.empty()) {
+        g_currentRandomIndex = rand() % static_cast<int>(g_scrConfig.profiles.size());
+        const auto& profile = g_scrConfig.profiles[static_cast<size_t>(g_currentRandomIndex)];
+        shaderCode = profile.shaderCode;
+        timeScale = profile.timeScale;
+        for (int i = 0; i < 4; i++) {
+            state.channelBindings[i] = profile.channelBindings[i];
+        }
+        compileCurrentShader(state, shaderCode);
+    }
+    
+    // 可变的时间缩放（用于随机切换后更新）
+    float currentTimeScale = timeScale;
+    
+    // 设置 update callback（处理随机切换）
+    app.setUpdateCallback([&state, effectiveRandomMode, randomInterval, &currentTimeScale](float deltaTime) {
+        // 随机切换逻辑
+        if (effectiveRandomMode && g_scrConfig.profiles.size() > 1) {
+            g_randomTimer += deltaTime;
+            
+            if (g_randomTimer >= randomInterval) {
+                g_randomTimer = 0.0f;
+                
+                // 选择下一个随机 profile（避免选择当前正在播放的）
+                int newIndex;
+                int profileCount = static_cast<int>(g_scrConfig.profiles.size());
+                do {
+                    newIndex = rand() % profileCount;
+                } while (newIndex == g_currentRandomIndex && profileCount > 1);
+                
+                g_currentRandomIndex = newIndex;
+                
+                // 加载新的 profile
+                const auto& profile = g_scrConfig.profiles[static_cast<size_t>(g_currentRandomIndex)];
+                
+                // 编译新 shader
+                compileCurrentShader(state, profile.shaderCode);
+                
+                // 更新通道绑定
+                for (int i = 0; i < 4; i++) {
+                    state.channelBindings[i] = profile.channelBindings[i];
+                }
+                
+                // 更新时间缩放
+                currentTimeScale = profile.timeScale;
+                if (currentTimeScale <= 0.0f) currentTimeScale = 1.0f;
+            }
+        }
+    });
+    
     // 设置退出检测回调
     glfwSetKeyCallback(app.getWindow(), [](GLFWwindow* window, int key, int scancode, int action, int mods) {
         (void)key; (void)scancode; (void)action; (void)mods;
@@ -706,7 +802,7 @@ int runScreensaverMode() {
     });
     
     // 渲染回调
-    app.setRenderCallback([&state, &app, timeScale]() {
+    app.setRenderCallback([&state, &app, &currentTimeScale]() {
         // 检测鼠标移动
         double mouseX, mouseY;
         glfwGetCursorPos(app.getWindow(), &mouseX, &mouseY);
@@ -755,7 +851,7 @@ int runScreensaverMode() {
             }
             
             // 设置 uniforms
-            state.uniformManager.setTime(app.getTime() * timeScale);
+            state.uniformManager.setTime(app.getTime() * currentTimeScale);
             state.uniformManager.setResolution(static_cast<float>(app.getWidth()), 
                                                 static_cast<float>(app.getHeight()));
             state.uniformManager.setMouse(0, 0, 0, 0);
