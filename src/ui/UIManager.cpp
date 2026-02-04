@@ -22,6 +22,19 @@ bool UIManager::init(GLFWwindow* window) {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     
+    // 加载 Consolas 字体用于代码编辑器
+    // Windows 系统字体路径：C:\Windows\Fonts\consola.ttf
+    const char* fontPath = "C:\\Windows\\Fonts\\consola.ttf";
+    m_editorFont = io.Fonts->AddFontFromFileTTF(fontPath, 16.0f);
+    
+    if (!m_editorFont) {
+        // 如果加载失败，回退到默认字体
+        m_editorFont = io.Fonts->AddFontDefault();
+    }
+    
+    // 添加默认字体作为 UI 字体
+    io.Fonts->AddFontDefault();
+    
     setDarkTheme();
     
     ImGui_ImplGlfw_InitForOpenGL(window, true);
